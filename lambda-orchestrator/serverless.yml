@@ -1,0 +1,20 @@
+service: order-orchestrator-lambda
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  environment:
+    CUSTOMERS_API_URL: http://customers-api:3001 # Url interna para Docker
+    ORDERS_API_URL: http://orders-api:3002       # Url interna para Docker
+    SERVICE_TOKEN: my-secret-token
+
+functions:
+  createAndConfirmOrder:
+    handler: index.handler # Nombre del archivo.función
+    events:
+      - http:
+          path: /orchestrator/create-and-confirm-order
+          method: post
+
+plugins:
+  - serverless-offline

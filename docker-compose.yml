@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  mysql-customer:
+    image: mysql:8.0
+    container_name: b2b_mysql_customer
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${CUSTOMER_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${CUSTOMER_DB_NAME}
+      MYSQL_USER: ${CUSTOMER_DB_USER}
+      MYSQL_PASSWORD: ${CUSTOMER_DB_PASSWORD}
+    volumes:
+      - ./db/customer/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./db/customer/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    ports:
+      - "3306:3306"
+
+  mysql-order:
+    image: mysql:8.0
+    container_name: b2b_mysql_order
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ORDER_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${ORDER_DB_NAME}
+      MYSQL_USER: ${ORDER_DB_USER}
+      MYSQL_PASSWORD: ${ORDER_DB_PASSWORD}
+    volumes:
+      - ./db/order/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./db/order/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    ports:
+      - "3308:3306"
+
+  customers-api:
+    build:
+      context: ./customers-api
+      dockerfile: Dockerfile
+    container_name: customers-api
+    command: npm run dev
+    restart: always
+    env_file:
+      - ./customers-api/.env
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mysql-customer
+    environment:
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      DB_HOST: mysql-customer
+      DB_PORT: ${CUSTOMER_DB_PORT}
+      DB_NAME: ${CUSTOMER_DB_NAME}
+      DB_USER: ${CUSTOMER_DB_USER}
+      DB_PASSWORD: ${CUSTOMER_DB_PASSWORD}
+    
+  orders-api:
+    build:
+      context: ./orders-api
+      dockerfile: Dockerfile
+    container_name: orders-api
+    command: npm run dev
+    restart: always
+    env_file:
+      - ./orders-api/.env
+    ports:
+      - "3002:3002"
+    depends_on:
+      - mysql-order
+      - customers-api
+    environment:
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      CUSTOMERS_API_URL: ${CUSTOMERS_API_URL}
+      DB_HOST: mysql-order
+      DB_PORT: ${ORDER_DB_PORT}
+      DB_NAME: ${ORDER_DB_NAME}
+      DB_USER: ${ORDER_DB_USER}
+      DB_PASSWORD: ${ORDER_DB_PASSWORD}
+
+  lambda-orchestrator:
+    build:
+      context: ./lambda-orchestrator
+      dockerfile: Dockerfile
+    container_name: orchestrator-lambda
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - customers-api
+      - orders-api
+    environment:
+      CUSTOMERS_API_URL: ${CUSTOMERS_API_URL}
+      ORDERS_API_URL: ${ORDERS_API_URL}
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+    volumes:
+      # Monta las credenciales del Serverless Framework en el contenedor.
+      # Reemplaza el path con el de tu sistema.
+      - ~/.serverless:/root/.serverless # Para Linux/macOS
+      # - C:\Users\<user>\.serverless:/root/.serverless # Para Windows
