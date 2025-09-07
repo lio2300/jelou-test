@@ -24,7 +24,6 @@ exports.getCustomerById = async (req, res, next) => {
 exports.searchCustomers = async (req, res, next) => {
     try {
         const { search, cursor, limit } = req.query;
-        console.log({query: req.query});
         
         const result = await customerService.searchCustomers({ search, cursor, limit: parseInt(limit) });
         res.status(200).json(result);

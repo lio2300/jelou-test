@@ -1,5 +1,5 @@
 # Stage 1: Construcción (builder)
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Establece el directorio de trabajo dentro del contenedor
 WORKDIR /app

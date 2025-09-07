@@ -25,7 +25,7 @@ exports.handler = async (event) => {
         }
 
         // Paso 1: Validar cliente en Customers API
-        const customerResponse = await axios.get(`${CUSTOMERS_API_URL}/internal/${customer_id}`, {
+        const customerResponse = await axios.get(`${CUSTOMERS_API_URL}/internal/customers/${customer_id}`, {
             headers: { 'Authorization': `Bearer ${SERVICE_TOKEN}` }
         }).catch(err => {
             if (err.response && err.response.status === 404) {

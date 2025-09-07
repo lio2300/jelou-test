@@ -6,7 +6,7 @@ provider:
   environment:
     CUSTOMERS_API_URL: http://customers-api:3001 # Url interna para Docker
     ORDERS_API_URL: http://orders-api:3002       # Url interna para Docker
-    SERVICE_TOKEN: my-secret-token
+    SERVICE_TOKEN: 123
 
 functions:
   createAndConfirmOrder:
