@@ -93,5 +93,5 @@ services:
     volumes:
       # Monta las credenciales del Serverless Framework en el contenedor.
       # Reemplaza el path con el de tu sistema.
-      - ~/.serverless:/root/.serverless # Para Linux/macOS
+       - ~/.serverlessrc:/root/.serverlessrc # Para Linux/macOS
       # - C:\Users\<user>\.serverless:/root/.serverless # Para Windows
