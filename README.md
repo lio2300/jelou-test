@@ -13,14 +13,21 @@ Este repositorio contiene un sistema mínimo compuesto por:
 - Docker y Docker Compose
 - Node.js 20+
 - Serverless Framework (`npm install -g serverless`)
+- NgRok (`npm install -g ngrok`)
 
 ---
 
 ## Variables de entorno
 
+---
+
+## Levantamiento de proyecto
+- docker-compose up --build
+- ngrok http 3000
+
 Crea un archivo `.env` para cada API con las siguientes variables:
 
-**Customers API (`./customers-api/.env`)**  
+**Root Config (`.env`)**  
 ```env
 DB_HOST=mysql
 DB_PORT=3306

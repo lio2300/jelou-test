@@ -1,0 +1,307 @@
+openapi: 3.0.3
+info:
+  title: Customers API
+  description: API para la gestión de clientes de un backoffice B2B.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3001
+    description: Servidor de desarrollo local
+tags:
+  - name: Customers
+    description: Operaciones sobre clientes
+  - name: Internal
+    description: Endpoints para comunicación de servicio a servicio
+
+paths:
+  /customers:
+    post:
+      tags:
+        - Customers
+      summary: Crea un nuevo cliente
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCreation'
+      responses:
+        '201':
+          description: Cliente creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          description: Datos de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Customer with this email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Customers
+      summary: Busca clientes
+      operationId: searchCustomers
+      parameters:
+        - name: search
+          in: query
+          description: Término de búsqueda por nombre o email.
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Número máximo de resultados a devolver.
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: cursor
+          in: query
+          description: ID del último resultado de la página anterior para paginación.
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de clientes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Customer'
+                  nextCursor:
+                    type: integer
+                    nullable: true
+        '400':
+          description: Parámetros de consulta inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /customers/{id}:
+    get:
+      tags:
+        - Customers
+      summary: Obtiene el detalle de un cliente por ID
+      operationId: getCustomerById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalle del cliente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404':
+          description: Cliente no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Customers
+      summary: Actualiza un cliente por ID
+      operationId: updateCustomer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerUpdate'
+      responses:
+        '200':
+          description: Cliente actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Datos de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cliente no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Customers
+      summary: Elimina (soft-delete) un cliente por ID
+      operationId: deleteCustomer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cliente eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Cliente no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /internal/customers/{id}:
+    get:
+      tags:
+        - Internal
+      summary: Endpoint interno para validar un cliente. Requiere Service Token.
+      operationId: getCustomerByIdInternal
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cliente encontrado y válido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Customer'
+        '401':
+          description: Token de servicio inválido o ausente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizeResponse'
+        '404':
+          description: Cliente no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: ServiceToken
+
+  schemas:
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID del cliente
+          example: 1
+        name:
+          type: string
+          example: 'ACME S.A.'
+        email:
+          type: string
+          format: email
+          example: 'contacto@acme.com'
+        phone:
+          type: string
+          example: '+593991234567'
+        created_at:
+          type: string
+          format: date-time
+          example: '2025-09-07T15:00:00Z'
+      required:
+        - id
+        - name
+        - email
+    
+    CustomerCreation:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 'ACME S.A.'
+        email:
+          type: string
+          format: email
+          example: 'contacto@acme.com'
+        phone:
+          type: string
+          example: '+593991234567'
+      required:
+        - name
+        - email
+        - phone
+    
+    CustomerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 'ACME S.A.'
+        email:
+          type: string
+          format: email
+          example: 'contacto@acme.com'
+        phone:
+          type: string
+          example: '+593991234567'
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 'El cliente no existe.'
+
+    UnauthorizeResponse:
+      type: object
+      properties:
+        error:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 'Unauthorized: Invalid or missing service token.'

@@ -1,0 +1,560 @@
+openapi: 3.0.3
+info:
+  title: Orders API
+  description: API para la gestión de pedidos y productos de un backoffice B2B.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3002
+    description: Servidor de desarrollo local
+
+tags:
+  - name: Products
+    description: Operaciones sobre productos y stock
+  - name: Orders
+    description: Operaciones sobre pedidos
+
+paths:
+  /products:
+    post:
+      tags:
+        - Products
+      summary: Crea un nuevo producto
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreation'
+      responses:
+        '201':
+          description: Producto creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Datos de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInputResponse'
+    get:
+      tags:
+        - Products
+      summary: Busca productos
+      operationId: searchProducts
+      parameters:
+        - name: search
+          in: query
+          description: Término de búsqueda por nombre o SKU
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Número máximo de resultados
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: cursor
+          in: query
+          description: ID del último resultado de la página anterior para paginación
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de productos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  nextCursor:
+                    type: integer
+                    nullable: true
+
+  /products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Obtiene el detalle de un producto por ID
+      operationId: getProductById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalle del producto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Producto no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Products
+      summary: Actualiza el precio o stock de un producto
+      operationId: updateProductStock
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+      responses:
+        '200':
+          description: Producto actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Datos de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInputResponse'
+        '404':
+          description: Producto no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders:
+    post:
+      tags:
+        - Orders
+      summary: Crea una nueva orden
+      description: Valida cliente, verifica stock, calcula el total y crea la orden en estado CREATED.
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreation'
+      responses:
+        '201':
+          description: Orden creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Datos de entrada inválidos o stock insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorStockResponse'
+
+    get:
+      tags:
+        - Orders
+      summary: Busca órdenes
+      operationId: searchOrders
+      parameters:
+        - name: status
+          in: query
+          description: Estado del pedido a filtrar (CREATED, CONFIRMED, CANCELED)
+          required: false
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: from
+          in: query
+          description: Fecha de inicio para la búsqueda (formato YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: Fecha de fin para la búsqueda (formato YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          description: Número máximo de resultados
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: cursor
+          in: query
+          description: ID del último resultado de la página anterior para paginación
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de órdenes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  nextCursor:
+                    type: integer
+                    nullable: true
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Obtiene el detalle de una orden por ID
+      operationId: getOrderById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalle de la orden con sus ítems
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderWithItems'
+        '404':
+          description: Orden no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/{id}/confirm:
+    post:
+      tags:
+        - Orders
+      summary: Confirma una orden
+      description: |
+        Cambia el estado de una orden de CREATED a CONFIRMED.
+        Esta operación es **idempotente** usando el header `X-Idempotency-Key`.
+      operationId: confirmOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: X-Idempotency-Key
+          in: header
+          description: Clave única para garantizar la idempotencia de la operación.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Orden confirmada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: El encabezado `X-Idempotency-Key` no fue proporcionado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInputResponse'
+        '404':
+          description: Orden no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El estado actual de la orden no permite la confirmación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorConflictConfirmOrderResponse'
+
+  /orders/{id}/cancel:
+    post:
+      tags:
+        - Orders
+      summary: Cancela una orden
+      description: |
+        Cambia el estado de una orden a CANCELED.
+        Si la orden estaba en estado `CREATED`, se cancela y se restaura el stock.
+        Si la orden estaba en estado `CONFIRMED`, solo se puede cancelar en los primeros 10 minutos.
+      operationId: cancelOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Orden cancelada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: La orden no puede ser cancelada según las reglas de negocio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInputResponse'
+        '404':
+          description: Orden no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID del producto
+          example: 1
+        sku:
+          type: string
+          description: Unidad de inventario
+          example: 'PROD-001'
+        name:
+          type: string
+          example: 'Smartphone'
+        price_cents:
+          type: integer
+          description: Precio en centavos
+          example: 59900
+        stock:
+          type: integer
+          description: Cantidad de stock disponible
+          example: 50
+        created_at:
+          type: string
+          format: date-time
+          example: '2025-09-07T15:00:00Z'
+      required:
+        - id
+        - sku
+        - name
+        - price_cents
+        - stock
+
+    ProductCreation:
+      type: object
+      properties:
+        sku:
+          type: string
+          example: 'PROD-001'
+        name:
+          type: string
+          example: 'Smartphone'
+        price_cents:
+          type: integer
+          example: 59900
+        stock:
+          type: integer
+          example: 50
+      required:
+        - sku
+        - name
+        - price_cents
+        - stock
+
+    ProductUpdate:
+      type: object
+      properties:
+        price_cents:
+          type: integer
+          example: 61900
+        stock:
+          type: integer
+          example: 45
+
+    OrderCreation:
+      type: object
+      properties:
+        customer_id:
+          type: integer
+          description: ID del cliente
+          example: 1
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemCreation'
+      required:
+        - customer_id
+        - items
+
+    OrderItemCreation:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          example: 1
+        qty:
+          type: integer
+          example: 2
+      required:
+        - product_id
+        - qty
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID de la orden
+          example: 101
+        customer_id:
+          type: integer
+          example: 1
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        total_cents:
+          type: integer
+          example: 129800
+        created_at:
+          type: string
+          format: date-time
+          example: '2025-09-07T15:00:00Z'
+      required:
+        - id
+        - customer_id
+        - status
+        - total_cents
+        - created_at
+
+    OrderWithItems:
+      allOf:
+        - $ref: '#/components/schemas/Order'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderItem'
+      
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        order_id:
+          type: integer
+          example: 101
+        product_id:
+          type: integer
+          example: 1
+        qty:
+          type: integer
+          example: 2
+        unit_price_cents:
+          type: integer
+          example: 59900
+        subtotal_cents:
+          type: integer
+          example: 119800
+      required:
+        - id
+        - order_id
+        - product_id
+        - qty
+        - unit_price_cents
+        - subtotal_cents
+
+    OrderStatus:
+      type: string
+      enum:
+        - CREATED
+        - CONFIRMED
+        - CANCELED
+
+    ErrorStockResponse:
+      type: object
+      properties:
+        error:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 'Insufficient stock for product with ID: ${ID}'
+          
+          
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 'Recurso no encontrado'
+          
+    ErrorInputResponse:
+      type: object
+      properties:
+        error:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 'Datos de entrada inválidos'
+          
+    ErrorConflictConfirmOrderResponse:
+      type: object
+      properties:
+        error:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 'Order cannot be confirmed. Current status is not CREATED.'
