@@ -47,7 +47,7 @@ paths:
       parameters:
         - name: search
           in: query
-          description: Término de búsqueda por nombre o SKU
+          description: Término de búsqueda por nombre
           required: false
           schema:
             type: string
@@ -361,14 +361,10 @@ components:
           type: integer
           description: ID del producto
           example: 1
-        sku:
-          type: string
-          description: Unidad de inventario
-          example: 'PROD-001'
         name:
           type: string
           example: 'Smartphone'
-        price_cents:
+        price:
           type: integer
           description: Precio en centavos
           example: 59900
@@ -382,36 +378,31 @@ components:
           example: '2025-09-07T15:00:00Z'
       required:
         - id
-        - sku
         - name
-        - price_cents
+        - price
         - stock
 
     ProductCreation:
       type: object
       properties:
-        sku:
-          type: string
-          example: 'PROD-001'
         name:
           type: string
           example: 'Smartphone'
-        price_cents:
+        price:
           type: integer
           example: 59900
         stock:
           type: integer
           example: 50
       required:
-        - sku
         - name
-        - price_cents
+        - price
         - stock
 
     ProductUpdate:
       type: object
       properties:
-        price_cents:
+        price:
           type: integer
           example: 61900
         stock:
@@ -458,7 +449,7 @@ components:
           example: 1
         status:
           $ref: '#/components/schemas/OrderStatus'
-        total_cents:
+        total:
           type: integer
           example: 129800
         created_at:
@@ -469,7 +460,7 @@ components:
         - id
         - customer_id
         - status
-        - total_cents
+        - total
         - created_at
 
     OrderWithItems:
@@ -497,10 +488,10 @@ components:
         qty:
           type: integer
           example: 2
-        unit_price_cents:
+        unit_price:
           type: integer
           example: 59900
-        subtotal_cents:
+        subtotal:
           type: integer
           example: 119800
       required:
@@ -508,8 +499,8 @@ components:
         - order_id
         - product_id
         - qty
-        - unit_price_cents
-        - subtotal_cents
+        - unit_price
+        - subtotal
 
     OrderStatus:
       type: string

@@ -2,10 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const customerController = require('../controllers/customerController');
-const { authenticateServiceToken } = require('../middlewares/authMiddleware');
+const validate = require('../middlewares/validate');
+const { createCustomerSchema, updateCustomerSchema } = require('../schemas/customerSchema');
 
-router.post('/', customerController.createCustomer);
-router.get('/:id', customerController.getCustomerById);
+router.post('/', validate(createCustomerSchema), customerController.createCustomer);
+router.get('/:id', validate(updateCustomerSchema), customerController.getCustomerById);
 router.get('/', customerController.searchCustomers);
 router.put('/:id', customerController.updateCustomer);
 router.delete('/:id', customerController.deleteCustomer);
